@@ -12,8 +12,9 @@ import (
 )
 
 const (
-    IMAGE_WIDTH = 640
-    IMAGE_HEIGHT = 480
+    IMAGE_WIDTH = 320
+    IMAGE_HEIGHT = 240
+    STRIPE_WIDTH = 1
 )
 
 func reportParameters(capture *opencv.Capture) {
@@ -57,12 +58,12 @@ func main() {
 
         Clear() // blank the output image
 
-        for stripe := 0; stripe < IMAGE_WIDTH; stripe += 2 {
+        for stripe := 0; stripe < IMAGE_WIDTH; stripe += STRIPE_WIDTH {
             image := capture.QueryFrame() // returns an IplImage
             if image == nil {
                 panic("Failed to capture an image")
             }
-            DisplaySubImage(stripe, 0, 2, IMAGE_HEIGHT, image)
+            DisplaySubImage(stripe, 0, STRIPE_WIDTH, IMAGE_HEIGHT, image)
 
             // Crazy version - takes stripes from the centre of the image only
 //            DisplaySubImageShifted(IMAGE_WIDTH / 2, 0, 2, IMAGE_HEIGHT, image,
