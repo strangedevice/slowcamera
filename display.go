@@ -32,16 +32,28 @@ func InitDisplay(iw, ih int) {
     sWidth, sHeight = openvg.Init()
     iWidth, iHeight = iw, ih
     out = make([]C.VGubyte, iw * ih * VG_CHANS)
+
+    // clear screen to opaque black
     openvg.StartColor(sWidth, sHeight, "black", 1.0)
-    openvg.End() // blank screen
+    openvg.End()
+
+    // apply scale transform so images fill the screen
+    ScaleImage(float64(sWidth) / float64(iWidth), 
+        float64(sHeight) / float64(iHeight))
+
     fmt.Printf("Image display initialised to (%d, %d)\n", iw, ih)
 }
 
+func ScaleImage(xscale, yscale float64) {
+    C.vgSeti(C.VG_MATRIX_MODE, C.VG_MATRIX_IMAGE_USER_TO_SURFACE)
+    openvg.Scale(xscale, yscale)
+}
+
 // Low-level image drawing.
-// Draws an openVG RGBA raster of size w*h at screen location (x,y).
+// Draws an openVG RGBA raster of size w*h at screen location (0,0).
 // Assumes raster data is continuous.
 
-func drawImage(x, y int, w, h int, data unsafe.Pointer) {
+func drawImage(w, h int, data unsafe.Pointer) {
     var stride C.VGint = C.VGint(w * 4)
     var format C.VGImageFormat = C.VG_sABGR_8888
     var quality C.VGbitfield =  C.VG_IMAGE_QUALITY_BETTER
@@ -50,7 +62,10 @@ func drawImage(x, y int, w, h int, data unsafe.Pointer) {
     img = C.vgCreateImage(format, C.VGint(w), C.VGint(h), quality)
     C.vgImageSubData(img, data, stride, format,
         0, 0, C.VGint(w), C.VGint(h))
-    C.vgSetPixels(C.VGint(x), C.VGint(y), img, 0, 0, C.VGint(w), C.VGint(h))
+
+    // vgDrawImage() applies the scale transformation, 
+    // vgSetPixels() does not
+    C.vgDrawImage(img)
     C.vgDestroyImage(img)
 }
 
@@ -121,9 +136,7 @@ func Clear() {
 
 // Displays the complete output image centered on the screen
 func Show() {
-    xo := (sWidth - iWidth) / 2
-    yo := (sHeight - iHeight) / 2
-    drawImage(xo, yo, iWidth, iHeight, unsafe.Pointer(&out[0]))
+    drawImage(iWidth, iHeight, unsafe.Pointer(&out[0]))
     openvg.End() // buffer swap
 }
 
