@@ -32,6 +32,8 @@ func InitDisplay(iw, ih int) {
     sWidth, sHeight = openvg.Init()
     iWidth, iHeight = iw, ih
     out = make([]C.VGubyte, iw * ih * VG_CHANS)
+    openvg.StartColor(sWidth, sHeight, "black", 1.0)
+    openvg.End() // blank screen
     fmt.Printf("Image display initialised to (%d, %d)\n", iw, ih)
 }
 
@@ -72,11 +74,16 @@ func DisplayImage(image *opencv.IplImage) {
 }
 
 // Copy a rectangular sub-image to the output,
-// defined by top-left corner (tlx, tly) and size w x h
+// defined by top-left corner (itlx, itly) and size w * h
 
-func DisplaySubImage(tlx, tly int, w, h int, image *opencv.IplImage) {
-    DisplaySubImageShifted(tlx, tly, w, h, image, tlx, tly)
+func DisplaySubImage(itlx, itly int, w, h int, image *opencv.IplImage) {
+    DisplaySubImageShifted(itlx, itly, w, h, image, itlx, itly)
 }
+
+// Copy a rectangular sub-image to a different position in the output.
+// Input has top-left corner (itlx, itly), output (otlx, otly).
+// Both sub-images have size w * h and must lie within their respective
+// containing images (no clipping).
 
 func DisplaySubImageShifted(
         itlx, itly int, w, h int,
@@ -87,8 +94,8 @@ func DisplaySubImageShifted(
     in := toByteSlice(image.ImageData(),
         image.Width() * image.Height() * channels)
 
-    for iy, oy := itly, otly; iy < itly + h; iy++ {
-        for ix, ox := itlx, otlx; ix < itlx + w; ix++ {
+    for iy, oy := itly, otly; iy < itly + h; iy, oy = iy + 1, oy + 1 {
+        for ix, ox := itlx, otlx; ix < itlx + w; ix, ox = ix + 1, ox + 1 {
             // image origin is top-left
             imagep := (ix + (iHeight - 1 - iy) * iWidth) * channels
             // openVG origin is bottom-left
@@ -98,11 +105,7 @@ func DisplaySubImageShifted(
             out[outp + 1] = C.VGubyte(in[imagep + 1]); // green
             out[outp + 2] = C.VGubyte(in[imagep + 0]); // blue
             out[outp + 3] = 255 // alpha
-
-            ox++
         }
-
-        oy++
     }
 }
 
@@ -114,7 +117,6 @@ func Clear() {
             out[i] = 255 // alpha
         }
     }
-    openvg.StartColor(sWidth, sHeight, "black", 1.0)
 }
 
 // Displays the complete output image centered on the screen
