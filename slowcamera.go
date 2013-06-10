@@ -63,6 +63,10 @@ func main() {
                 panic("Failed to capture an image")
             }
             DisplaySubImage(stripe, 0, 2, IMAGE_HEIGHT, image)
+
+            // Crazy version - takes stripes from the centre of the image only
+//            DisplaySubImageShifted(IMAGE_WIDTH / 2, 0, 2, IMAGE_HEIGHT, image,
+//                stripe, 0)
             Show()
         }
     }

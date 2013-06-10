@@ -32,7 +32,6 @@ func InitDisplay(iw, ih int) {
     sWidth, sHeight = openvg.Init()
     iWidth, iHeight = iw, ih
     out = make([]C.VGubyte, iw * ih * VG_CHANS)
-    openvg.StartColor(sWidth, sHeight, "black")
     fmt.Printf("Image display initialised to (%d, %d)\n", iw, ih)
 }
 
@@ -66,30 +65,6 @@ func toByteSlice(p unsafe.Pointer, length int) []byte {
     return bytes
 }
 
-func DisplayIplImage(x, y int, image *opencv.IplImage) {
-    w, h := image.Width(), image.Height()
-    fmt.Printf("Displaying image of size (%d, %d) at (%d, %d)\n", 
-        w, h, x, y)
-
-    in := toByteSlice(image.ImageData(), w * h * image.Channels())
-    n := 0;
-
-    for yp := 0; yp < h; yp++ {
-        for xp := 0; xp < w; xp++ {
-            offset := (xp + (h - 1 - yp) * w ) * image.Channels()
-
-            out[n] = C.VGubyte(in[offset+2]); // red
-            n++
-            out[n] = C.VGubyte(in[offset+1]); // green
-            n++
-            out[n] = C.VGubyte(in[offset+0]); // blue
-            n++
-            out[n] = 255 // alpha
-            n++
-        }
-    }
-}
-
 // Convenience function to copy an entire image to the output
 
 func DisplayImage(image *opencv.IplImage) {
@@ -100,33 +75,46 @@ func DisplayImage(image *opencv.IplImage) {
 // defined by top-left corner (tlx, tly) and size w x h
 
 func DisplaySubImage(tlx, tly int, w, h int, image *opencv.IplImage) {
-    // fmt.Printf("Displaying sub-image of size (%d, %d) at (%d, %d)\n", 
-    //     w, h, tlx, tly)
+    DisplaySubImageShifted(tlx, tly, w, h, image, tlx, tly)
+}
+
+func DisplaySubImageShifted(
+        itlx, itly int, w, h int,
+        image *opencv.IplImage,
+        otlx, otly int) {
 
     channels := image.Channels()
-    in := toByteSlice(image.ImageData(), 
+    in := toByteSlice(image.ImageData(),
         image.Width() * image.Height() * channels)
 
-    for yp := tly; yp < tly + h; yp++ {
-        for xp := tlx; xp < tlx + w; xp++ {
+    for iy, oy := itly, otly; iy < itly + h; iy++ {
+        for ix, ox := itlx, otlx; ix < itlx + w; ix++ {
             // image origin is top-left
-            imagep := (xp + (iHeight - 1 - yp) * iWidth) * channels
+            imagep := (ix + (iHeight - 1 - iy) * iWidth) * channels
             // openVG origin is bottom-left
-            outp := (xp + yp * iWidth) * VG_CHANS
+            outp := (ox + oy * iWidth) * VG_CHANS
 
             out[outp + 0] = C.VGubyte(in[imagep + 2]); // red
             out[outp + 1] = C.VGubyte(in[imagep + 1]); // green
             out[outp + 2] = C.VGubyte(in[imagep + 0]); // blue
             out[outp + 3] = 255 // alpha
+
+            ox++
         }
+
+        oy++
     }
 }
 
-// Sets the entire output image to transparent black
+// Sets the entire output image to opaque black
 func Clear() {
     for i := range out {
         out[i] = 0
+        if i % 4 == 3 {
+            out[i] = 255 // alpha
+        }
     }
+    openvg.StartColor(sWidth, sHeight, "black", 1.0)
 }
 
 // Displays the complete output image centered on the screen
